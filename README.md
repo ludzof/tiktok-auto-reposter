@@ -139,6 +139,14 @@ The bot will:
 
 ---
 
+## 👥 Contributors
+
+- **[@ludzof](https://github.com/ludzof)** — Project Creator & Maintainer
+- **Antigravity (Google DeepMind)** — AI Pair Programmer & System Architect
+
+---
+
 ## ⚠️ Disclaimer
 
 This tool is created for educational and archival purposes. Please respect intellectual property rights and TikTok's Community Guidelines. Use responsible posting intervals (2–4 hours) to avoid account suppression.
+
