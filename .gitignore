@@ -1,0 +1,38 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Personal configuration (use config.example.json instead)
+config.json
+
+# User credentials & browser cookies (DO NOT COMMIT)
+tiktok_session/
+*.session
+
+# Local queues & persistent states
+queue.json
+scheduler_state.json
+used_sounds.json
+
+# Temporary media & downloads
+queue_downloads_temp/
+processed_output/
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.mov
+*.mp3
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk

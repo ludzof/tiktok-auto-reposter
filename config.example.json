@@ -1,0 +1,28 @@
+{
+  "source_username": "target_username_here",
+  "rapidapi_key": "",
+  "ayrshare_api_key": "",
+  "auto_publish": true,
+  "check_interval_minutes": 180,
+  "headless_browser": false,
+  "video_modifications": {
+    "crop_percent": 1.5,
+    "speed_multiplier": 1.02,
+    "contrast": 1.03,
+    "saturation": 1.04,
+    "brightness": 0.01,
+    "pitch_shift": true
+  },
+  "carousel_modifications": {
+    "crop_percent": 1.5,
+    "contrast": 1.03,
+    "saturation": 1.04,
+    "strip_exif": true,
+    "jpeg_quality": 95
+  },
+  "caption_settings": {
+    "strip_original_hashtags": true,
+    "include_credit": false,
+    "new_hashtags": "#fyp #viral #trending #explore"
+  }
+}
