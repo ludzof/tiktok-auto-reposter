@@ -60,6 +60,15 @@ def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
     used_signatures = {r.get("normalized") for r in used_records if r.get("normalized")}
     print(f"[*] Previously used sounds in database: {len(used_signatures)}")
 
+    # 1. Wait for sound list to render in modal
+    try:
+        page.locator('button:has-text("Use")').first.wait_for(state="visible", timeout=15000)
+    except Exception:
+        print("[!] Timed out waiting for sounds in modal.")
+        page.keyboard.press("Escape")
+        time.sleep(1)
+        return None
+
     def get_sounds():
         return page.evaluate("""() => {
             const btns = Array.from(document.querySelectorAll('button')).filter(b => b.innerText.trim() === 'Use');
@@ -85,15 +94,18 @@ def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
         print("[*] Less than 5 unused sounds visible, scrolling to load more...")
         use_buttons = page.locator('button:has-text("Use")')
         if use_buttons.count() > 0:
-            use_buttons.last.scroll_into_view_if_needed()
-            time.sleep(2)
-            sounds = get_sounds()
-            unused = [s for s in sounds if normalize_title(s["title"]) not in used_signatures and s["title"]]
+            try:
+                use_buttons.last.scroll_into_view_if_needed(timeout=5000)
+                time.sleep(2)
+                sounds = get_sounds()
+                unused = [s for s in sounds if normalize_title(s["title"]) not in used_signatures and s["title"]]
+            except Exception:
+                pass
 
     print(f"[*] Total sounds loaded: {len(sounds)} | Unused sounds available: {len(unused)}")
 
     if not unused:
-        print("[!] All loaded sounds were previously used. Picking least recently used.")
+        print("[!] All loaded sounds were previously used. Picking first available sound.")
         target_sound = sounds[0] if sounds else None
     else:
         # Pick randomly from the unused candidates for variety
@@ -101,6 +113,8 @@ def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
 
     if not target_sound:
         print("[!] No sound available to select.")
+        page.keyboard.press("Escape")
+        time.sleep(1)
         return None
 
     chosen_idx = target_sound["index"]
@@ -111,11 +125,19 @@ def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
         btn.click()
         time.sleep(2)
 
+        # Ensure modal closes
+        modal = page.locator('div[class*="TUXModal-overlay"], div[role="dialog"]')
+        if modal.count() > 0 and modal.first.is_visible():
+            page.keyboard.press("Escape")
+            time.sleep(1)
+
         # Record to database so it is never reused
         save_used_sound(target_sound["title"], target_sound["subtitle"], post_id)
         print(f"[OK] Sound '{target_sound['title']}' saved to database (will not be repeated).")
         return target_sound["title"]
 
+    page.keyboard.press("Escape")
+    time.sleep(1)
     return None
 
 

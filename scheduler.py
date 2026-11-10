@@ -183,7 +183,7 @@ def run_scheduler():
 
         if is_carousel:
             # Transform carousel images to anti-flagged JPGs
-            slides = [Path(f) for f in item.get("files", []) if Path(f).exists()]
+            slides = [Path(f) for f in item.get("files", []) if Path(f).exists() and Path(f).suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]]
             clean_slides = []
             for idx, s in enumerate(slides, 1):
                 clean_s = post_dir / f"slide_{idx:02d}_anti_flagged.jpg"
