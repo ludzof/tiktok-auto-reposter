@@ -51,6 +51,46 @@ def save_used_sound(title: str, subtitle: str, post_id: str = ""):
         json.dump(used, f, indent=2)
 
 
+def close_sound_modal_if_open(page):
+    """
+    Ensures any open sound selector modal dialog or overlay is cleanly closed.
+    TikTok Studio does NOT close modal dialogs on Escape key press.
+    This helper uses the specific X close button (.MusicPickerView__header button, [data-icon="XBold"])
+    and includes JavaScript fallbacks.
+    """
+    try:
+        overlay = page.locator('div[class*="TUXModal-overlay"], div[role="dialog"]')
+        if overlay.count() > 0 and overlay.first.is_visible():
+            print("[*] Modal dialog detected open. Closing via header close button...")
+            close_btn = page.locator(
+                '.MusicPickerView__header button, [data-icon="XBold"], [data-icon="x-bold"], .MusicPickerView__header [role="button"], button[aria-label="Close"]'
+            ).first
+            if close_btn.count() > 0 and close_btn.is_visible():
+                close_btn.click()
+                time.sleep(1)
+
+            # If still visible, trigger click via evaluate
+            if overlay.count() > 0 and overlay.first.is_visible():
+                page.evaluate("""() => {
+                    const btn = document.querySelector('.MusicPickerView__header button') 
+                        || document.querySelector('[data-icon="XBold"]')?.closest('button')
+                        || document.querySelector('[data-icon="x-bold"]')?.closest('button');
+                    if (btn) btn.click();
+                }""")
+                time.sleep(1)
+
+            # Failsafe: if the overlay is still lingering in DOM intercepting clicks
+            if overlay.count() > 0 and overlay.first.is_visible():
+                print("[!] Failsafe: removing lingering overlay...")
+                page.evaluate("""() => {
+                    const ov = document.querySelector('.TUXModal-overlay');
+                    if (ov) ov.remove();
+                }""")
+                time.sleep(0.5)
+    except Exception as e:
+        print(f"[*] Note during modal close: {e}")
+
+
 def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
     """
     Finds and selects a trending sound from 'For You' that has NEVER been used before.
@@ -62,11 +102,10 @@ def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
 
     # 1. Wait for sound list to render in modal
     try:
-        page.locator('button:has-text("Use")').first.wait_for(state="visible", timeout=15000)
+        page.locator('button:has-text("Use")').first.wait_for(state="visible", timeout=25000)
     except Exception:
         print("[!] Timed out waiting for sounds in modal.")
-        page.keyboard.press("Escape")
-        time.sleep(1)
+        close_sound_modal_if_open(page)
         return None
 
     def get_sounds():
@@ -113,8 +152,7 @@ def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
 
     if not target_sound:
         print("[!] No sound available to select.")
-        page.keyboard.press("Escape")
-        time.sleep(1)
+        close_sound_modal_if_open(page)
         return None
 
     chosen_idx = target_sound["index"]
@@ -125,19 +163,15 @@ def pick_unique_sound(page, post_id: str = "") -> Optional[str]:
         btn.click()
         time.sleep(2)
 
-        # Ensure modal closes
-        modal = page.locator('div[class*="TUXModal-overlay"], div[role="dialog"]')
-        if modal.count() > 0 and modal.first.is_visible():
-            page.keyboard.press("Escape")
-            time.sleep(1)
+        # Guarantee modal closes cleanly
+        close_sound_modal_if_open(page)
 
         # Record to database so it is never reused
         save_used_sound(target_sound["title"], target_sound["subtitle"], post_id)
         print(f"[OK] Sound '{target_sound['title']}' saved to database (will not be repeated).")
         return target_sound["title"]
 
-    page.keyboard.press("Escape")
-    time.sleep(1)
+    close_sound_modal_if_open(page)
     return None
 
 
@@ -219,8 +253,9 @@ def upload_to_tiktok(
             file_paths = [str(f.resolve()) for f in valid_files]
             print(f"[*] Selecting {len(file_paths)} slide file(s)...")
             file_input.set_input_files(file_paths)
-            print("[*] Uploading files to TikTok...")
-            time.sleep(4)
+            wait_time = max(5, min(len(valid_files) * 0.8, 16))
+            print(f"[*] Ingesting {len(file_paths)} media file(s) into TikTok Studio (waiting {wait_time:.0f}s)...")
+            time.sleep(wait_time)
 
             # 4. Dismiss "Preview your video on your phone" ("Got it") modal if visible
             got_it = page.locator('button:has-text("Got it")')
@@ -245,8 +280,11 @@ def upload_to_tiktok(
                             print("[!] Warning: Could not select an unused sound.")
                 except Exception as e:
                     print(f"[!] Warning: Error during sound selection: {e}")
+                finally:
+                    close_sound_modal_if_open(page)
 
             # 5. Fill Title & Description
+            close_sound_modal_if_open(page)
             if is_carousel:
                 # Title field (0/90 chars)
                 title_input = page.locator('input[placeholder*="title"], input[placeholder*="Title"]')
@@ -259,7 +297,7 @@ def upload_to_tiktok(
                 # Description editor
                 desc_area = page.locator('div[contenteditable="true"]').first
                 if desc_area.is_visible():
-                    desc_area.click()
+                    desc_area.click(timeout=10000)
                     page.keyboard.press("Control+A")
                     page.keyboard.press("Backspace")
                     time.sleep(0.3)
@@ -272,7 +310,7 @@ def upload_to_tiktok(
                 # Video caption editor
                 desc_area = page.locator('div[contenteditable="true"]').first
                 if desc_area.is_visible():
-                    desc_area.click()
+                    desc_area.click(timeout=10000)
                     page.keyboard.press("Control+A")
                     page.keyboard.press("Backspace")
                     time.sleep(0.3)
